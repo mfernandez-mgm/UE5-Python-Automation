@@ -84,7 +84,7 @@ def get_level_actors():
     return level_sequence_actor, bp_tracking_actor, camera_actor, bp_man_business
 
 
-def edit_level_sequence(level_sequence_actor, level_sequence, bp_tracking_actor, camera_actor, metahuman, folder_path):
+def edit_level_sequence(level_sequence_actor, level_sequence, bp_tracking_actor, camera_actor, metahuman, folder_path, source_file, asset_name):
     '''
     - Change the level sequence asset to the one in the newly created folder
     - Remove all bindings from the level sequence asset, and create new ones
@@ -136,8 +136,9 @@ def edit_level_sequence(level_sequence_actor, level_sequence, bp_tracking_actor,
     anim_section = face_track.add_section()
 
     # TODO: Import the facial animation asset here
-    source_file = None
-    asset_name = None
+    # source_file = None
+    # asset_name = None
+    
 
     # Import the facial animation asset using import_facial_animation function
     import_facial_animation(source_file, folder_path, asset_name)
@@ -148,11 +149,14 @@ def edit_level_sequence(level_sequence_actor, level_sequence, bp_tracking_actor,
     anim_section.set_range_seconds(0, anim_asset.sequence_length)
 
     # Add the camera actor to the level sequence
-    level_sequence.add_possessable(camera_actor)
-    camera_actor.get_cine_camera_component().focus_settings.focus_method = unreal.CameraFocusMethod.TRACKING
-    camera_actor.get_cine_camera_component().focus_settings.tracking_focus_settings.actor_to_track = bp_tracking_actor
+    camera_binding = level_sequence.add_possessable(camera_actor)
+    camera_component = camera_actor.get_cine_camera_component()
+    camera_component.focus_settings.focus_method = unreal.CameraFocusMethod.TRACKING
+    camera_component.focus_settings.tracking_focus_settings.actor_to_track = bp_tracking_actor
 
-    camera_binding_id = level_sequence.find_binding_by_name('CineCameraActor1').get_binding_id().copy()
+    # camera_binding_id = level_sequence.find_binding_by_name('CineCameraActor1').get_binding_id().copy()
+    camera_binding_id = unreal.MovieSceneObjectBindingID()
+    camera_binding_id.set_editor_property("Guid", camera_binding.get_id())
 
     print(f'camera_binding_id: {camera_binding_id}')
 
@@ -174,7 +178,7 @@ def import_facial_animation(source_file, destination_path, asset_name):
     load_facial_animation = unreal.OmniverseFacialAnimationWrapper.py_load_facial_animation
 
     # Load skeleton asset
-    skeleton_asset_path = '/Game/CitySampleCrowd/Character/Shared/Rig/Face_Archetype_Skeleton.Face_Archetype_Skeleton'
+    skeleton_asset_path = '/Game/MetaHumans/Common/Face/Face_Archetype_Skeleton.Face_Archetype_Skeleton'
     skeleton_asset = unreal.load_asset(skeleton_asset_path, unreal.Skeleton)
 
     imported_asset = load_facial_animation(None, source_file, destination_path, skeleton_asset, asset_name)
@@ -185,15 +189,68 @@ def import_facial_animation(source_file, destination_path, asset_name):
     print('-' * 50)
 
 
+def __main__():
+    # Parse the command line for any additional args
+    (cmdTokens, cmdSwitches, cmdParameters) = unreal.SystemLibrary.parse_command_line(unreal.SystemLibrary.get_command_line())
+    print("hello world")
+    folder_name = None
+    try:
+        for key, value in cmdParameters.items():
+            print(f'key: {key}, value: {value}')
+        
+        # folder_name = cmdParameters['VideoName']
+        folder_name = "MyVideoName"
+    except:
+        unreal.log_error("Missing '-VideoName=MyVideoName' argument")
+        return
+
+
+    # Duplicate the 'Template' folder
+    try:
+        (folder_path, map, level_sequence) = duplicate_template_folder_and_rename(folder_name)
+
+    except Exception as err:
+        unreal.log_error(f'Error Duplicating folder and renaming assets: {err}')
+        return
+    
+    try:
+        # Get the level actors for the sequence
+        (level_sequence_actor, bp_tracking_actor, camera_actor, metahuman) = get_level_actors()
+    except Exception as err:
+        unreal.log_error(f'Error getting actors from map: {err}')
+        return
+    
+    try:
+        source_file = "C:/Users/mgm-resorts/Downloads/export/a2f_cache.usd" # Used for testing
+        asset_name = "Facial_Anim" # Used for testing
+        # Edit the level sequence
+        edit_level_sequence(level_sequence_actor, level_sequence, bp_tracking_actor, camera_actor, metahuman, folder_path, source_file, asset_name)
+    except Exception as err:
+        unreal.log_error(f'Error editing level sequence: {err}')
+        return
+
+
+if __name__ == '__main__':
+    __main__()
+
+'''
+# Here's how we can scan the command line for any additional args such as the path to a level sequence.
+        (cmdTokens, cmdSwitches, cmdParameters) = unreal.SystemLibrary.parse_command_line(unreal.SystemLibrary.get_command_line())
+        levelSequencePath = None
+        try:
+            levelSequencePath = cmdParameters['LevelSequence']
+        except:
+            unreal.log_error("Missing '-LevelSequence=/Game/Foo/MySequence.MySequence' argument")
+            self.on_executor_errored()
+            return
+'''
 
 
 
 
 
-
-
-
-
+# for x in sorted(dir(unreal)):
+#     print(x)
 
 
 '''
